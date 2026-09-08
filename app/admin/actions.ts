@@ -1,0 +1,243 @@
+"use server";
+
+import { createClient } from "@/lib/supabase/server";
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+
+// ---------------------------------------------------------
+// Auth Actions
+// ---------------------------------------------------------
+
+export async function signIn(formData: FormData) {
+  const email = formData.get("email") as string;
+  const password = formData.get("password") as string;
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath("/admin");
+  redirect("/admin");
+}
+
+export async function signOut() {
+  const supabase = await createClient();
+  await supabase.auth.signOut();
+  revalidatePath("/");
+  redirect("/admin/login");
+}
+
+// ---------------------------------------------------------
+// Profile Action
+// ---------------------------------------------------------
+
+export async function updateProfile(formData: FormData): Promise<void> {
+  const supabase = await createClient();
+
+  const data = {
+    name: formData.get("name") as string,
+    title: formData.get("title") as string,
+    short_bio: formData.get("short_bio") as string,
+    long_bio: formData.get("long_bio") as string,
+    email: formData.get("email") as string,
+    phone: (formData.get("phone") as string) || null,
+    linkedin_url: (formData.get("linkedin_url") as string) || null,
+    github_url: (formData.get("github_url") as string) || null,
+    cv_url: (formData.get("cv_url") as string) || null,
+    profile_image_url: (formData.get("profile_image_url") as string) || null,
+    location: (formData.get("location") as string) || null,
+    availability_status: (formData.get("availability_status") as string) || null,
+    updated_at: new Date().toISOString(),
+  };
+
+  const { data: existing } = await supabase.from("profile").select("id").limit(1).single();
+
+  let res;
+  if (existing) {
+    res = await supabase.from("profile").update(data).eq("id", existing.id);
+  } else {
+    res = await supabase.from("profile").insert([data]);
+  }
+
+  if (res.error) {
+    console.error("Error updating profile:", res.error.message);
+    return;
+  }
+
+  revalidatePath("/");
+  revalidatePath("/admin/profile");
+  redirect("/admin/profile");
+}
+
+// ---------------------------------------------------------
+// Project Actions
+// ---------------------------------------------------------
+
+export async function saveProject(formData: FormData): Promise<void> {
+  const supabase = await createClient();
+  const id = formData.get("id") as string;
+
+  const title = formData.get("title") as string;
+  const slug = (formData.get("slug") as string) || title.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  const short_description = formData.get("short_description") as string;
+  const description = (formData.get("description") as string) || "";
+  const category = (formData.get("category") as string) || "Web Application";
+  const github_url = (formData.get("github_url") as string) || null;
+  const live_url = (formData.get("live_url") as string) || null;
+  const image_url = (formData.get("image_url") as string) || null;
+  const featured = formData.get("featured") === "on";
+  const published = formData.get("published") === "on";
+  const sort_order = parseInt(formData.get("sort_order") as string, 10) || 0;
+
+  const projectPayload = {
+    title,
+    slug,
+    short_description,
+    description,
+    category,
+    github_url,
+    live_url,
+    image_url,
+    featured,
+    published,
+    sort_order,
+    updated_at: new Date().toISOString(),
+  };
+
+  let res;
+  if (id) {
+    res = await supabase.from("projects").update(projectPayload).eq("id", id);
+  } else {
+    res = await supabase.from("projects").insert([projectPayload]);
+  }
+
+  if (res.error) {
+    console.error("Error saving project:", res.error.message);
+    return;
+  }
+
+  revalidatePath("/");
+  revalidatePath("/admin/projects");
+  redirect("/admin/projects");
+}
+
+export async function deleteProject(id: string): Promise<void> {
+  const supabase = await createClient();
+  const { error } = await supabase.from("projects").delete().eq("id", id);
+
+  if (error) {
+    console.error("Error deleting project:", error.message);
+  }
+
+  revalidatePath("/");
+  revalidatePath("/admin/projects");
+}
+
+// ---------------------------------------------------------
+// Experience Actions
+// ---------------------------------------------------------
+
+export async function saveExperience(formData: FormData): Promise<void> {
+  const supabase = await createClient();
+  const id = formData.get("id") as string;
+
+  const company = formData.get("company") as string;
+  const position = formData.get("position") as string;
+  const description = formData.get("description") as string;
+  const start_date = formData.get("start_date") as string;
+  const current = formData.get("current") === "on";
+  const end_date = current ? null : ((formData.get("end_date") as string) || null);
+  const sort_order = parseInt(formData.get("sort_order") as string, 10) || 0;
+
+  const payload = {
+    company,
+    position,
+    description,
+    start_date,
+    end_date,
+    current,
+    sort_order,
+    updated_at: new Date().toISOString(),
+  };
+
+  let res;
+  if (id) {
+    res = await supabase.from("experiences").update(payload).eq("id", id);
+  } else {
+    res = await supabase.from("experiences").insert([payload]);
+  }
+
+  if (res.error) {
+    console.error("Error saving experience:", res.error.message);
+    return;
+  }
+
+  revalidatePath("/");
+  revalidatePath("/admin/experience");
+  redirect("/admin/experience");
+}
+
+export async function deleteExperience(id: string): Promise<void> {
+  const supabase = await createClient();
+  const { error } = await supabase.from("experiences").delete().eq("id", id);
+
+  if (error) {
+    console.error("Error deleting experience:", error.message);
+  }
+
+  revalidatePath("/");
+  revalidatePath("/admin/experience");
+}
+
+// ---------------------------------------------------------
+// Skill Actions
+// ---------------------------------------------------------
+
+export async function saveSkill(formData: FormData): Promise<void> {
+  const supabase = await createClient();
+  const id = formData.get("id") as string;
+
+  const name = formData.get("name") as string;
+  const category = formData.get("category") as string;
+  const sort_order = parseInt(formData.get("sort_order") as string, 10) || 0;
+
+  const payload = {
+    name,
+    category,
+    sort_order,
+  };
+
+  let res;
+  if (id) {
+    res = await supabase.from("skills").update(payload).eq("id", id);
+  } else {
+    res = await supabase.from("skills").insert([payload]);
+  }
+
+  if (res.error) {
+    console.error("Error saving skill:", res.error.message);
+    return;
+  }
+
+  revalidatePath("/");
+  revalidatePath("/admin/skills");
+  redirect("/admin/skills");
+}
+
+export async function deleteSkill(id: string): Promise<void> {
+  const supabase = await createClient();
+  const { error } = await supabase.from("skills").delete().eq("id", id);
+
+  if (error) {
+    console.error("Error deleting skill:", error.message);
+  }
+
+  revalidatePath("/");
+  revalidatePath("/admin/skills");
+}
