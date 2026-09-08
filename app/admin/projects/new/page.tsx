@@ -2,6 +2,7 @@ import React from "react";
 import Link from "next/link";
 import { saveProject } from "../../actions";
 import { ArrowLeft } from "lucide-react";
+import { SubmitButton } from "@/components/admin/SubmitButton";
 
 export default function NewProjectPage() {
   return (
@@ -174,12 +175,9 @@ export default function NewProjectPage() {
             >
               Cancel
             </Link>
-            <button
-              type="submit"
-              className="px-5 py-2.5 bg-[#D97757] hover:bg-[#B9573D] text-white text-sm font-semibold rounded-lg shadow-xs transition-colors cursor-pointer"
-            >
+            <SubmitButton loadingText="Saving Project...">
               Save Project
-            </button>
+            </SubmitButton>
           </div>
         </form>
       </div>

@@ -1,7 +1,8 @@
 import React from "react";
 import { getExperiences } from "@/lib/data/experience";
 import { saveExperience, deleteExperience } from "../actions";
-import { Trash2 } from "lucide-react";
+import { SubmitButton } from "@/components/admin/SubmitButton";
+import { DeleteButton } from "@/components/admin/DeleteButton";
 
 export default async function AdminExperiencePage() {
   const experiences = await getExperiences();
@@ -115,12 +116,9 @@ export default async function AdminExperiencePage() {
           </div>
 
           <div className="pt-2 flex justify-end">
-            <button
-              type="submit"
-              className="px-5 py-2.5 bg-[#D97757] hover:bg-[#B9573D] text-white text-sm font-semibold rounded-lg shadow-xs transition-colors cursor-pointer"
-            >
+            <SubmitButton loadingText="Adding Experience...">
               Add Experience
-            </button>
+            </SubmitButton>
           </div>
         </form>
       </div>
@@ -150,13 +148,7 @@ export default async function AdminExperiencePage() {
                   await deleteExperience(exp.id);
                 }}
               >
-                <button
-                  type="submit"
-                  className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                  title="Delete"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                <DeleteButton title="Delete Experience" />
               </form>
             </div>
           ))}

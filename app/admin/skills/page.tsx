@@ -1,8 +1,9 @@
 import React from "react";
 import { getSkills } from "@/lib/data/skills";
 import { saveSkill, deleteSkill } from "../actions";
-import { Trash2 } from "lucide-react";
 import { Tag } from "@/components/ui/Tag";
+import { SubmitButton } from "@/components/admin/SubmitButton";
+import { DeleteButton } from "@/components/admin/DeleteButton";
 
 export default async function AdminSkillsPage() {
   const skills = await getSkills();
@@ -70,12 +71,9 @@ export default async function AdminSkillsPage() {
           </div>
 
           <div className="pt-2 flex justify-end">
-            <button
-              type="submit"
-              className="px-5 py-2.5 bg-[#D97757] hover:bg-[#B9573D] text-white text-sm font-semibold rounded-lg shadow-xs transition-colors cursor-pointer"
-            >
+            <SubmitButton loadingText="Adding Skill...">
               Add Skill
-            </button>
+            </SubmitButton>
           </div>
         </form>
       </div>
@@ -105,13 +103,7 @@ export default async function AdminSkillsPage() {
                   await deleteSkill(skill.id);
                 }}
               >
-                <button
-                  type="submit"
-                  className="text-red-400 hover:text-red-600 p-1 cursor-pointer"
-                  title="Delete Skill"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                <DeleteButton title="Delete Skill" />
               </form>
             </div>
           ))}

@@ -2,8 +2,9 @@ import React from "react";
 import Link from "next/link";
 import { getProjects } from "@/lib/data/projects";
 import { deleteProject } from "../actions";
-import { Plus, Trash2, ExternalLink, Star } from "lucide-react";
+import { Plus, ExternalLink, Star } from "lucide-react";
 import { Tag } from "@/components/ui/Tag";
+import { DeleteButton } from "@/components/admin/DeleteButton";
 
 export default async function AdminProjectsPage() {
   const projects = await getProjects(false);
@@ -86,13 +87,7 @@ export default async function AdminProjectsPage() {
                       }}
                       className="inline-block"
                     >
-                      <button
-                        type="submit"
-                        className="p-1 text-red-500 hover:text-red-700 transition-colors cursor-pointer"
-                        title="Delete Project"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <DeleteButton title="Delete Project" />
                     </form>
                   </td>
                 </tr>

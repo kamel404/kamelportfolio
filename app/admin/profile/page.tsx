@@ -2,6 +2,7 @@ import React from "react";
 import { getProfile } from "@/lib/data/profile";
 import { updateProfile } from "../actions";
 import { CvDropzone } from "@/components/admin/CvDropzone";
+import { SubmitButton } from "@/components/admin/SubmitButton";
 
 export default async function AdminProfilePage() {
   const profile = await getProfile();
@@ -179,12 +180,9 @@ export default async function AdminProfilePage() {
           </div>
 
           <div className="pt-4 border-t border-[#E4E1D8] flex justify-end">
-            <button
-              type="submit"
-              className="px-6 py-2.5 bg-[#D97757] hover:bg-[#B9573D] text-white text-sm font-semibold rounded-lg shadow-xs transition-colors cursor-pointer"
-            >
+            <SubmitButton loadingText="Saving Profile...">
               Save Profile Changes
-            </button>
+            </SubmitButton>
           </div>
         </form>
       </div>
