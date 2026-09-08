@@ -40,6 +40,43 @@ export async function signOut() {
 export async function updateProfile(formData: FormData): Promise<void> {
   const supabase = await createClient();
 
+  const cvFile = formData.get("cv_file") as File | null;
+  let cv_url = (formData.get("cv_url") as string) || null;
+
+  // Process uploaded CV file if present
+  if (cvFile && cvFile.size > 0) {
+    try {
+      const buffer = Buffer.from(await cvFile.arrayBuffer());
+      const ext = cvFile.name.split(".").pop() || "pdf";
+      const cleanFileName = `kamel-faour-cv-${Date.now()}.${ext}`;
+
+      // 1. Try uploading to Supabase Storage bucket 'portfolio-images'
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from("portfolio-images")
+        .upload(`cv/${cleanFileName}`, buffer, {
+          contentType: cvFile.type || "application/pdf",
+          upsert: true,
+        });
+
+      if (!uploadError && uploadData) {
+        const { data: publicUrlData } = supabase.storage
+          .from("portfolio-images")
+          .getPublicUrl(uploadData.path);
+        cv_url = publicUrlData.publicUrl;
+      } else {
+        // 2. Fallback to saving to local public/uploads directory
+        const fs = await import("fs/promises");
+        const path = await import("path");
+        const uploadsDir = path.join(process.cwd(), "public", "uploads");
+        await fs.mkdir(uploadsDir, { recursive: true });
+        await fs.writeFile(path.join(uploadsDir, cleanFileName), buffer);
+        cv_url = `/uploads/${cleanFileName}`;
+      }
+    } catch (err) {
+      console.error("Error processing CV file upload:", err);
+    }
+  }
+
   const data = {
     name: formData.get("name") as string,
     title: formData.get("title") as string,
@@ -49,7 +86,7 @@ export async function updateProfile(formData: FormData): Promise<void> {
     phone: (formData.get("phone") as string) || null,
     linkedin_url: (formData.get("linkedin_url") as string) || null,
     github_url: (formData.get("github_url") as string) || null,
-    cv_url: (formData.get("cv_url") as string) || null,
+    cv_url,
     profile_image_url: (formData.get("profile_image_url") as string) || null,
     location: (formData.get("location") as string) || null,
     availability_status: (formData.get("availability_status") as string) || null,

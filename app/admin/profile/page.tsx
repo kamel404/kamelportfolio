@@ -1,6 +1,7 @@
 import React from "react";
 import { getProfile } from "@/lib/data/profile";
 import { updateProfile } from "../actions";
+import { CvDropzone } from "@/components/admin/CvDropzone";
 
 export default async function AdminProfilePage() {
   const profile = await getProfile();
@@ -12,12 +13,12 @@ export default async function AdminProfilePage() {
           Profile & Social Links
         </h1>
         <p className="text-sm text-[#6B6A63] mt-1">
-          Update personal details, social links, and CV download URL.
+          Update personal details, social links, and CV download file.
         </p>
       </div>
 
       <div className="bg-white border border-[#E4E1D8] rounded-xl p-6 sm:p-8 shadow-xs">
-        <form action={updateProfile} className="space-y-5">
+        <form action={updateProfile} encType="multipart/form-data" className="space-y-5">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-[#1F1F1C] mb-1.5">
@@ -128,38 +129,27 @@ export default async function AdminProfilePage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-[#1F1F1C] mb-1.5">
-                Profile Photo URL
-              </label>
-              <input
-                type="text"
-                name="profile_image_url"
-                defaultValue={profile.profile_image_url || "/images/kamel-faour.jpg"}
-                placeholder="/images/kamel-faour.jpg or Supabase Storage URL"
-                className="w-full px-3.5 py-2.5 rounded-lg border border-[#E4E1D8] bg-white text-[#1F1F1C] text-sm focus:outline-none focus:ring-2 focus:ring-[#D97757]/40"
-              />
-              <p className="text-xs text-[#6B6A63] mt-1">
-                Local path (e.g. /images/kamel-faour.jpg) or full image URL.
-              </p>
-            </div>
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-[#1F1F1C] mb-1.5">
+              Profile Photo URL
+            </label>
+            <input
+              type="text"
+              name="profile_image_url"
+              defaultValue={profile.profile_image_url || "/images/kamel-faour.jpg"}
+              placeholder="/images/kamel-faour.jpg or Supabase Storage URL"
+              className="w-full px-3.5 py-2.5 rounded-lg border border-[#E4E1D8] bg-white text-[#1F1F1C] text-sm focus:outline-none focus:ring-2 focus:ring-[#D97757]/40"
+            />
+            <p className="text-xs text-[#6B6A63] mt-1">
+              Local path (e.g. /images/kamel-faour.jpg) or full image URL.
+            </p>
+          </div>
 
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-[#1F1F1C] mb-1.5">
-                CV / Resume Link
-              </label>
-              <input
-                type="url"
-                name="cv_url"
-                defaultValue={profile.cv_url || ""}
-                placeholder="https://.../kamel-faour-cv.pdf"
-                className="w-full px-3.5 py-2.5 rounded-lg border border-[#E4E1D8] bg-white text-[#1F1F1C] text-sm focus:outline-none focus:ring-2 focus:ring-[#D97757]/40"
-              />
-              <p className="text-xs text-[#6B6A63] mt-1">
-                Direct PDF link or Supabase Storage link.
-              </p>
-            </div>
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-[#1F1F1C] mb-1.5">
+              Curriculum Vitae (CV / Resume) — Drag & Drop File
+            </label>
+            <CvDropzone currentCvUrl={profile.cv_url} />
           </div>
 
           <div>
