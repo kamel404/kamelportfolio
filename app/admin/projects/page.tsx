@@ -1,13 +1,16 @@
 import React from "react";
 import Link from "next/link";
 import { getProjects } from "@/lib/data/projects";
+import { getProfile } from "@/lib/data/profile";
 import { deleteProject } from "../actions";
 import { Plus, ExternalLink, Star } from "lucide-react";
 import { Tag } from "@/components/ui/Tag";
 import { DeleteButton } from "@/components/admin/DeleteButton";
+import { CvImportButton } from "@/components/admin/CvImportButton";
 
 export default async function AdminProjectsPage() {
   const projects = await getProjects(false);
+  const profile = await getProfile();
 
   return (
     <div className="space-y-6">
@@ -21,14 +24,23 @@ export default async function AdminProjectsPage() {
           </p>
         </div>
 
-        <Link
-          href="/admin/projects/new"
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#D97757] hover:bg-[#B9573D] text-white text-sm font-semibold rounded-lg shadow-xs transition-colors self-start sm:self-auto"
-        >
-          <Plus className="w-4 h-4" />
-          Add Project
-        </Link>
+        <div className="flex items-center gap-2.5 self-start sm:self-auto">
+          <CvImportButton
+            target="projects"
+            currentCvUrl={profile.cv_url}
+            label="Import from CV"
+            variant="outline"
+          />
+          <Link
+            href="/admin/projects/new"
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#D97757] hover:bg-[#B9573D] text-white text-sm font-semibold rounded-lg shadow-xs transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Add Project
+          </Link>
+        </div>
       </div>
+
 
       <div className="bg-white border border-[#E4E1D8] rounded-xl overflow-hidden shadow-xs">
         <div className="overflow-x-auto">

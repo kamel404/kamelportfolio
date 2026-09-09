@@ -278,3 +278,171 @@ export async function deleteSkill(id: string): Promise<void> {
   revalidatePath("/");
   revalidatePath("/admin/skills");
 }
+
+// ---------------------------------------------------------
+// CV Bulk Import Actions
+// ---------------------------------------------------------
+
+export interface ExperienceImportItem {
+  company: string;
+  position: string;
+  description: string;
+  start_date: string;
+  end_date?: string | null;
+  current: boolean;
+  sort_order?: number;
+}
+
+export async function importExperiences(items: ExperienceImportItem[]) {
+  if (!items || items.length === 0) {
+    return { success: false, error: "No experiences provided to import." };
+  }
+
+  const supabase = await createClient();
+
+  // Find the highest sort_order currently
+  const { data: existing } = await supabase
+    .from("experiences")
+    .select("sort_order")
+    .order("sort_order", { ascending: false })
+    .limit(1);
+
+  const startOrder = (existing?.[0]?.sort_order ?? 0) + 1;
+
+  const records = items.map((item, index) => ({
+    company: item.company,
+    position: item.position,
+    description: item.description,
+    start_date: item.start_date,
+    end_date: item.current ? null : (item.end_date || null),
+    current: Boolean(item.current),
+    sort_order: item.sort_order ?? (startOrder + index),
+    updated_at: new Date().toISOString(),
+  }));
+
+  const { data, error } = await supabase.from("experiences").insert(records).select("id");
+
+  if (error) {
+    console.error("Error importing experiences:", error.message);
+    return { success: false, error: error.message };
+  }
+
+  revalidatePath("/");
+  revalidatePath("/admin/experience");
+
+  return { success: true, count: data?.length || records.length };
+}
+
+export interface ProjectImportItem {
+  title: string;
+  slug?: string;
+  category: string;
+  short_description: string;
+  description?: string;
+  github_url?: string | null;
+  live_url?: string | null;
+  image_url?: string | null;
+  featured?: boolean;
+  published?: boolean;
+  sort_order?: number;
+  technologies?: string[];
+}
+
+export async function importProjects(items: ProjectImportItem[]) {
+  if (!items || items.length === 0) {
+    return { success: false, error: "No projects provided to import." };
+  }
+
+  const supabase = await createClient();
+
+  // Find highest sort_order and existing slugs
+  const { data: existing } = await supabase
+    .from("projects")
+    .select("sort_order, slug")
+    .order("sort_order", { ascending: false });
+
+  const startOrder = (existing?.[0]?.sort_order ?? 0) + 1;
+  const existingSlugs = new Set((existing || []).map((p: any) => p.slug));
+
+  let importedCount = 0;
+
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    const baseSlug =
+      item.slug ||
+      item.title
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "") ||
+      "project";
+    let finalSlug = baseSlug;
+    let counter = 1;
+    while (existingSlugs.has(finalSlug)) {
+      finalSlug = `${baseSlug}-${counter}`;
+      counter++;
+    }
+    existingSlugs.add(finalSlug);
+
+    const projectPayload = {
+      title: item.title,
+      slug: finalSlug,
+      short_description: item.short_description,
+      description: item.description || "",
+      category: item.category || "Web Application",
+      github_url: item.github_url || null,
+      live_url: item.live_url || null,
+      image_url: item.image_url || null,
+      featured: Boolean(item.featured),
+      published: item.published !== false,
+      sort_order: item.sort_order ?? (startOrder + i),
+      updated_at: new Date().toISOString(),
+    };
+
+    const { data: insertedProject, error: projectError } = await supabase
+      .from("projects")
+      .insert([projectPayload])
+      .select("id")
+      .single();
+
+    if (projectError) {
+      console.error("Error importing project:", projectError.message);
+      continue;
+    }
+
+    importedCount++;
+
+    // Associate technologies if provided
+    if (insertedProject && item.technologies && item.technologies.length > 0) {
+      try {
+        for (const techName of item.technologies) {
+          const trimmed = techName.trim();
+          if (!trimmed) continue;
+
+          // Upsert technology
+          const { data: techRecord } = await supabase
+            .from("technologies")
+            .upsert({ name: trimmed }, { onConflict: "name" })
+            .select("id")
+            .single();
+
+          if (techRecord?.id) {
+            await supabase
+              .from("project_technologies")
+              .upsert(
+                { project_id: insertedProject.id, technology_id: techRecord.id },
+                { onConflict: "project_id,technology_id" }
+              );
+          }
+        }
+      } catch (techErr) {
+        console.warn("Error associating technologies with imported project:", techErr);
+      }
+    }
+  }
+
+  revalidatePath("/");
+  revalidatePath("/admin/projects");
+
+  return { success: true, count: importedCount };
+}
+
