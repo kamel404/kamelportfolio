@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { normalizeDateForDb } from "@/lib/utils/date";
 
 // ---------------------------------------------------------
 // Auth Actions
@@ -187,9 +188,11 @@ export async function saveExperience(formData: FormData): Promise<void> {
   const company = formData.get("company") as string;
   const position = formData.get("position") as string;
   const description = formData.get("description") as string;
-  const start_date = formData.get("start_date") as string;
-  const current = formData.get("current") === "on";
-  const end_date = current ? null : ((formData.get("end_date") as string) || null);
+  const rawStartDate = formData.get("start_date") as string;
+  const rawEndDate = formData.get("end_date") as string;
+  const current = formData.get("current") === "on" || formData.get("current") === "true";
+  const start_date = normalizeDateForDb(rawStartDate) || `${new Date().getFullYear()}-01-01`;
+  const end_date = current ? null : normalizeDateForDb(rawEndDate);
   const sort_order = parseInt(formData.get("sort_order") as string, 10) || 0;
 
   const payload = {
@@ -204,7 +207,8 @@ export async function saveExperience(formData: FormData): Promise<void> {
   };
 
   let res;
-  if (id) {
+  const isUuid = id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+  if (isUuid) {
     res = await supabase.from("experiences").update(payload).eq("id", id);
   } else {
     res = await supabase.from("experiences").insert([payload]);
@@ -220,17 +224,121 @@ export async function saveExperience(formData: FormData): Promise<void> {
   redirect("/admin/experience");
 }
 
-export async function deleteExperience(id: string): Promise<void> {
-  const supabase = await createClient();
-  const { error } = await supabase.from("experiences").delete().eq("id", id);
-
-  if (error) {
-    console.error("Error deleting experience:", error.message);
+export async function updateExperienceAction(
+  id: string,
+  payload: {
+    company: string;
+    position: string;
+    start_date: string;
+    end_date?: string | null;
+    current: boolean;
+    sort_order?: number;
+    description: string;
   }
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const supabase = await createClient();
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 
-  revalidatePath("/");
-  revalidatePath("/admin/experience");
+    const dataToUpdate = {
+      company: payload.company,
+      position: payload.position,
+      start_date: normalizeDateForDb(payload.start_date) || `${new Date().getFullYear()}-01-01`,
+      end_date: payload.current ? null : normalizeDateForDb(payload.end_date),
+      current: Boolean(payload.current),
+      sort_order: payload.sort_order ?? 0,
+      description: payload.description,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (isUuid) {
+      const { error } = await supabase.from("experiences").update(dataToUpdate).eq("id", id);
+      if (error) {
+        console.error("Error updating experience:", error.message);
+        return { success: false, error: error.message };
+      }
+    } else {
+      const { error } = await supabase.from("experiences").insert([dataToUpdate]);
+      if (error) {
+        console.error("Error creating experience from update:", error.message);
+        return { success: false, error: error.message };
+      }
+    }
+
+    revalidatePath("/");
+    revalidatePath("/admin/experience");
+    return { success: true };
+  } catch (err: any) {
+    console.error("Error in updateExperienceAction:", err);
+    return { success: false, error: err?.message || "Failed to update experience" };
+  }
 }
+
+export async function deleteExperience(id: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const supabase = await createClient();
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+
+    if (isUuid) {
+      const { error } = await supabase.from("experiences").delete().eq("id", id);
+      if (error) {
+        console.error("Error deleting experience:", error.message);
+        return { success: false, error: error.message };
+      }
+    }
+
+    revalidatePath("/");
+    revalidatePath("/admin/experience");
+    return { success: true };
+  } catch (err: any) {
+    console.error("Error in deleteExperience:", err);
+    return { success: false, error: err?.message || "Failed to delete experience" };
+  }
+}
+
+export async function seedDefaultExperiences(): Promise<{ success: boolean; error?: string }> {
+  try {
+    const supabase = await createClient();
+    const records = [
+      {
+        company: "Freelance & Independent Projects",
+        position: "Full Stack Software Developer",
+        description:
+          "• Engineered custom web applications and cross-platform mobile apps for clients using Next.js, React, and Flutter.\n• Designed scalable PostgreSQL database architectures and secure RESTful APIs with Laravel and Node.js.\n• Configured automated deployments, environment configurations, and continuous delivery via Vercel and cloud platforms.",
+        start_date: "2024-01-01",
+        end_date: null,
+        current: true,
+        sort_order: 1,
+        updated_at: new Date().toISOString(),
+      },
+      {
+        company: "Academic & Collaborative Development",
+        position: "Software Developer",
+        description:
+          "• Built complex multi-user platforms including university community systems and e-commerce solutions.\n• Applied strict software engineering principles: modular architectures, test-driven validation, and relational database normalization.\n• Implemented responsive frontends with accessible design patterns adhering to modern web standards.",
+        start_date: "2022-01-01",
+        end_date: "2024-01-01",
+        current: false,
+        sort_order: 2,
+        updated_at: new Date().toISOString(),
+      },
+    ];
+
+    const { error } = await supabase.from("experiences").insert(records);
+    if (error) {
+      console.error("Error seeding default experiences:", error.message);
+      return { success: false, error: error.message };
+    }
+
+    revalidatePath("/");
+    revalidatePath("/admin/experience");
+    return { success: true };
+  } catch (err: any) {
+    console.error("Error in seedDefaultExperiences:", err);
+    return { success: false, error: err?.message || "Failed to seed default experiences" };
+  }
+}
+
 
 // ---------------------------------------------------------
 // Skill Actions
@@ -313,8 +421,8 @@ export async function importExperiences(items: ExperienceImportItem[]) {
     company: item.company,
     position: item.position,
     description: item.description,
-    start_date: item.start_date,
-    end_date: item.current ? null : (item.end_date || null),
+    start_date: normalizeDateForDb(item.start_date) || `${new Date().getFullYear()}-01-01`,
+    end_date: item.current ? null : normalizeDateForDb(item.end_date),
     current: Boolean(item.current),
     sort_order: item.sort_order ?? (startOrder + index),
     updated_at: new Date().toISOString(),

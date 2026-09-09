@@ -1,13 +1,14 @@
 import React from "react";
 import { getExperiences } from "@/lib/data/experience";
 import { getProfile } from "@/lib/data/profile";
-import { deleteExperience } from "../actions";
-import { DeleteButton } from "@/components/admin/DeleteButton";
 import { ExperienceForm } from "@/components/admin/ExperienceForm";
 import { CvImportButton } from "@/components/admin/CvImportButton";
+import { ExperienceList } from "@/components/admin/ExperienceList";
+
+export const dynamic = "force-dynamic";
 
 export default async function AdminExperiencePage() {
-  const experiences = await getExperiences();
+  const experiences = await getExperiences(false);
   const profile = await getProfile();
 
   return (
@@ -33,38 +34,8 @@ export default async function AdminExperiencePage() {
       {/* Add Experience Form (with autofill and CV import) */}
       <ExperienceForm currentCvUrl={profile.cv_url} />
 
-
-      {/* Experience List */}
-      <div className="bg-white border border-[#E4E1D8] rounded-xl p-6 sm:p-8 shadow-xs space-y-4">
-        <h2 className="text-base font-semibold text-[#1F1F1C]">
-          Existing Experience ({experiences.length})
-        </h2>
-
-        <div className="divide-y divide-[#E4E1D8]">
-          {experiences.map((exp) => (
-            <div key={exp.id} className="py-4 flex items-start justify-between gap-4">
-              <div>
-                <h3 className="font-semibold text-base text-[#1F1F1C]">
-                  {exp.position}
-                </h3>
-                <div className="text-sm text-[#D97757]">{exp.company}</div>
-                <div className="text-xs text-[#6B6A63] mt-1">
-                  {exp.start_date} — {exp.current ? "Present" : exp.end_date || "N/A"}
-                </div>
-              </div>
-
-              <form
-                action={async () => {
-                  "use server";
-                  await deleteExperience(exp.id);
-                }}
-              >
-                <DeleteButton title="Delete Experience" />
-              </form>
-            </div>
-          ))}
-        </div>
-      </div>
+      {/* Experience List (with Edit modal & working Delete) */}
+      <ExperienceList experiences={experiences} />
     </div>
   );
 }

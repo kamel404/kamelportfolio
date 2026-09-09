@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { Experience } from "@/types";
+import { formatDateForDisplay } from "@/lib/utils/date";
 
 export const defaultExperiences: Experience[] = [
   {
@@ -28,7 +29,7 @@ export const defaultExperiences: Experience[] = [
   },
 ];
 
-export async function getExperiences(): Promise<Experience[]> {
+export async function getExperiences(fallbackToDefault: boolean = true): Promise<Experience[]> {
   try {
     const supabase = await createClient();
     const { data, error } = await supabase
@@ -36,12 +37,24 @@ export async function getExperiences(): Promise<Experience[]> {
       .select("*")
       .order("sort_order", { ascending: true });
 
-    if (error || !data || data.length === 0) {
-      return defaultExperiences;
+    if (error) {
+      console.error("Error fetching experiences:", error.message);
+      return fallbackToDefault ? defaultExperiences : [];
     }
 
-    return data;
-  } catch {
-    return defaultExperiences;
+    if (!data || data.length === 0) {
+      return fallbackToDefault ? defaultExperiences : [];
+    }
+
+    return data.map((exp: any) => ({
+      ...exp,
+      start_date: formatDateForDisplay(exp.start_date),
+      end_date: exp.end_date ? formatDateForDisplay(exp.end_date) : null,
+    }));
+  } catch (err: any) {
+    if (err?.digest === "DYNAMIC_SERVER_USAGE") {
+      throw err;
+    }
+    return fallbackToDefault ? defaultExperiences : [];
   }
 }
