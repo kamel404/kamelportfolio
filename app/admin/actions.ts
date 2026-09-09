@@ -128,7 +128,41 @@ export async function saveProject(formData: FormData): Promise<void> {
   const category = (formData.get("category") as string) || "Web Application";
   const github_url = (formData.get("github_url") as string) || null;
   const live_url = (formData.get("live_url") as string) || null;
-  const image_url = (formData.get("image_url") as string) || null;
+  let image_url = (formData.get("image_url") as string) || null;
+  const imageFile = formData.get("image_file") as File | null;
+
+  if (imageFile && imageFile.size > 0) {
+    try {
+      const buffer = Buffer.from(await imageFile.arrayBuffer());
+      const rawExt = imageFile.name.split(".").pop() || "jpg";
+      const ext = rawExt.toLowerCase().replace(/[^a-z0-9]/g, "");
+      const cleanFileName = `project-${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${ext}`;
+
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from("portfolio-images")
+        .upload(`projects/${cleanFileName}`, buffer, {
+          contentType: imageFile.type || "image/jpeg",
+          upsert: true,
+        });
+
+      if (!uploadError && uploadData) {
+        const { data: publicUrlData } = supabase.storage
+          .from("portfolio-images")
+          .getPublicUrl(uploadData.path);
+        image_url = publicUrlData.publicUrl;
+      } else {
+        const fs = await import("fs/promises");
+        const path = await import("path");
+        const uploadsDir = path.join(process.cwd(), "public", "uploads");
+        await fs.mkdir(uploadsDir, { recursive: true });
+        await fs.writeFile(path.join(uploadsDir, cleanFileName), buffer);
+        image_url = `/uploads/${cleanFileName}`;
+      }
+    } catch (err) {
+      console.warn("Direct image file upload error:", err);
+    }
+  }
+
   const featured = formData.get("featured") === "on";
   const published = formData.get("published") === "on";
   const sort_order = parseInt(formData.get("sort_order") as string, 10) || 0;

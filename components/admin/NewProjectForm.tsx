@@ -5,6 +5,7 @@ import Link from "next/link";
 import { saveProject } from "@/app/admin/actions";
 import { SubmitButton } from "@/components/admin/SubmitButton";
 import { CvImportModal } from "./CvImportModal";
+import { ImageDropzone } from "./ImageDropzone";
 import { ParsedProject } from "@/lib/cv-parser";
 import { Sparkles, ArrowLeft, Tag } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -214,33 +215,26 @@ export function NewProjectForm({ currentCvUrl }: NewProjectFormProps) {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-[#1F1F1C] mb-1.5">
-                  Project Image URL
-                </label>
-                <input
-                  type="url"
-                  name="image_url"
-                  value={imageUrl}
-                  onChange={(e) => setImageUrl(e.target.value)}
-                  placeholder="https://images.unsplash.com/... or Supabase storage link"
-                  className="w-full px-3.5 py-2.5 rounded-lg border border-[#E4E1D8] bg-white text-[#1F1F1C] text-sm focus:outline-none focus:ring-2 focus:ring-[#D97757]/40"
-                />
-              </div>
+            <ImageDropzone
+              value={imageUrl}
+              onChange={setImageUrl}
+              name="image_url"
+              folder="projects"
+              label="Project Cover Image / Screenshot (Drag & Drop)"
+              helperText="Drop your project screenshot, banner, or app preview here (PNG, JPG, WEBP up to 10MB)"
+            />
 
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-[#1F1F1C] mb-1.5">
-                  Display Order
-                </label>
-                <input
-                  type="number"
-                  name="sort_order"
-                  value={sortOrder}
-                  onChange={(e) => setSortOrder(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-lg border border-[#E4E1D8] bg-white text-[#1F1F1C] text-sm focus:outline-none focus:ring-2 focus:ring-[#D97757]/40"
-                />
-              </div>
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-[#1F1F1C] mb-1.5">
+                Display Order
+              </label>
+              <input
+                type="number"
+                name="sort_order"
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value)}
+                className="w-full sm:w-1/2 px-3.5 py-2.5 rounded-lg border border-[#E4E1D8] bg-white text-[#1F1F1C] text-sm focus:outline-none focus:ring-2 focus:ring-[#D97757]/40"
+              />
             </div>
 
             <div className="flex items-center gap-6 pt-2">

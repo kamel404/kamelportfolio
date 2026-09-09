@@ -12,6 +12,7 @@ import {
   Tag,
 } from "lucide-react";
 import { GithubIcon } from "@/components/ui/Icons";
+import { ImageDropzone } from "./ImageDropzone";
 import { Project } from "@/types";
 import { updateProjectAction } from "@/app/admin/actions";
 import { useRouter } from "next/navigation";
@@ -257,21 +258,14 @@ export function EditProjectModal({ isOpen, onClose, project }: EditProjectModalP
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-[#1F1F1C] mb-1.5">
-              Project Image URL
-            </label>
-            <div className="relative">
-              <input
-                type="url"
-                value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
-                placeholder="https://..."
-                className="w-full pl-9 pr-3.5 py-2.5 rounded-lg border border-[#E4E1D8] bg-white text-[#1F1F1C] text-sm focus:outline-none focus:ring-2 focus:ring-[#D97757]/40"
-              />
-              <ImageIcon className="w-4 h-4 text-[#6B6A63] absolute left-3 top-3" />
-            </div>
-          </div>
+          <ImageDropzone
+            value={imageUrl}
+            onChange={setImageUrl}
+            name="image_url"
+            folder="projects"
+            label="Project Cover Image / Screenshot (Drag & Drop)"
+            helperText="Drop your project screenshot, banner, or app preview here (PNG, JPG, WEBP up to 10MB)"
+          />
 
           <div className="flex items-center gap-6 pt-2">
             <label className="flex items-center gap-2 text-sm text-[#1F1F1C] cursor-pointer">

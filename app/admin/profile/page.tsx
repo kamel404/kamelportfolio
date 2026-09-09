@@ -2,6 +2,7 @@ import React from "react";
 import { getProfile } from "@/lib/data/profile";
 import { updateProfile } from "../actions";
 import { CvDropzone } from "@/components/admin/CvDropzone";
+import { ProfilePhotoDropzone } from "@/components/admin/ProfilePhotoDropzone";
 import { SubmitButton } from "@/components/admin/SubmitButton";
 
 export default async function AdminProfilePage() {
@@ -130,21 +131,7 @@ export default async function AdminProfilePage() {
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-[#1F1F1C] mb-1.5">
-              Profile Photo URL
-            </label>
-            <input
-              type="text"
-              name="profile_image_url"
-              defaultValue={profile.profile_image_url || "/images/kamel-faour.jpg"}
-              placeholder="/images/kamel-faour.jpg or Supabase Storage URL"
-              className="w-full px-3.5 py-2.5 rounded-lg border border-[#E4E1D8] bg-white text-[#1F1F1C] text-sm focus:outline-none focus:ring-2 focus:ring-[#D97757]/40"
-            />
-            <p className="text-xs text-[#6B6A63] mt-1">
-              Local path (e.g. /images/kamel-faour.jpg) or full image URL.
-            </p>
-          </div>
+          <ProfilePhotoDropzone initialUrl={profile.profile_image_url} />
 
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-[#1F1F1C] mb-1.5">
