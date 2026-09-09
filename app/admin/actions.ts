@@ -132,6 +132,7 @@ export async function saveProject(formData: FormData): Promise<void> {
   const featured = formData.get("featured") === "on";
   const published = formData.get("published") === "on";
   const sort_order = parseInt(formData.get("sort_order") as string, 10) || 0;
+  const rawTechnologies = (formData.get("technologies") as string) || "";
 
   const projectPayload = {
     title,
@@ -148,16 +149,48 @@ export async function saveProject(formData: FormData): Promise<void> {
     updated_at: new Date().toISOString(),
   };
 
-  let res;
-  if (id) {
-    res = await supabase.from("projects").update(projectPayload).eq("id", id);
+  let projectId = id;
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+
+  if (isUuid) {
+    const res = await supabase.from("projects").update(projectPayload).eq("id", id);
+    if (res.error) {
+      console.error("Error saving project:", res.error.message);
+      return;
+    }
   } else {
-    res = await supabase.from("projects").insert([projectPayload]);
+    const res = await supabase.from("projects").insert([projectPayload]).select("id").single();
+    if (res.error) {
+      console.error("Error saving project:", res.error.message);
+      return;
+    }
+    projectId = res.data.id;
   }
 
-  if (res.error) {
-    console.error("Error saving project:", res.error.message);
-    return;
+  // Associate technologies if provided
+  if (rawTechnologies && projectId) {
+    const techList = rawTechnologies.split(",").map((t) => t.trim()).filter(Boolean);
+    try {
+      await supabase.from("project_technologies").delete().eq("project_id", projectId);
+      for (const techName of techList) {
+        const { data: techRow } = await supabase
+          .from("technologies")
+          .upsert({ name: techName }, { onConflict: "name" })
+          .select("id")
+          .single();
+
+        if (techRow?.id) {
+          await supabase
+            .from("project_technologies")
+            .upsert(
+              { project_id: projectId, technology_id: techRow.id },
+              { onConflict: "project_id,technology_id" }
+            );
+        }
+      }
+    } catch (techErr) {
+      console.warn("Error associating technologies in saveProject:", techErr);
+    }
   }
 
   revalidatePath("/");
@@ -165,17 +198,204 @@ export async function saveProject(formData: FormData): Promise<void> {
   redirect("/admin/projects");
 }
 
-export async function deleteProject(id: string): Promise<void> {
-  const supabase = await createClient();
-  const { error } = await supabase.from("projects").delete().eq("id", id);
+export async function deleteProject(id: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const supabase = await createClient();
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 
-  if (error) {
-    console.error("Error deleting project:", error.message);
+    if (isUuid) {
+      // Remove pivot records first to guarantee clean deletion
+      await supabase.from("project_technologies").delete().eq("project_id", id);
+      const { error } = await supabase.from("projects").delete().eq("id", id);
+      if (error) {
+        console.error("Error deleting project:", error.message);
+        return { success: false, error: error.message };
+      }
+    } else {
+      // If it's a slug or non-uuid
+      await supabase.from("projects").delete().eq("slug", id);
+    }
+
+    revalidatePath("/");
+    revalidatePath("/admin/projects");
+    return { success: true };
+  } catch (err: any) {
+    console.error("Error in deleteProject:", err);
+    return { success: false, error: err?.message || "Failed to delete project" };
   }
-
-  revalidatePath("/");
-  revalidatePath("/admin/projects");
 }
+
+export async function updateProjectAction(
+  id: string,
+  payload: {
+    title: string;
+    slug?: string;
+    category: string;
+    short_description: string;
+    description?: string;
+    github_url?: string | null;
+    live_url?: string | null;
+    image_url?: string | null;
+    featured?: boolean;
+    published?: boolean;
+    sort_order?: number;
+    technologies?: string[];
+  }
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const supabase = await createClient();
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+
+    const projectData = {
+      title: payload.title,
+      slug: payload.slug || payload.title.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+      category: payload.category,
+      short_description: payload.short_description,
+      description: payload.description || "",
+      github_url: payload.github_url || null,
+      live_url: payload.live_url || null,
+      image_url: payload.image_url || null,
+      featured: Boolean(payload.featured),
+      published: payload.published !== false,
+      sort_order: payload.sort_order ?? 0,
+      updated_at: new Date().toISOString(),
+    };
+
+    let projectId = id;
+
+    if (isUuid) {
+      const { error } = await supabase.from("projects").update(projectData).eq("id", id);
+      if (error) {
+        console.error("Error updating project:", error.message);
+        return { success: false, error: error.message };
+      }
+    } else {
+      const { data, error } = await supabase.from("projects").insert([projectData]).select("id").single();
+      if (error) {
+        return { success: false, error: error.message };
+      }
+      projectId = data.id;
+    }
+
+    // Update technologies if provided
+    if (payload.technologies) {
+      await supabase.from("project_technologies").delete().eq("project_id", projectId);
+
+      for (const techName of payload.technologies) {
+        const trimmed = techName.trim();
+        if (!trimmed) continue;
+
+        const { data: techRecord } = await supabase
+          .from("technologies")
+          .upsert({ name: trimmed }, { onConflict: "name" })
+          .select("id")
+          .single();
+
+        if (techRecord?.id) {
+          await supabase.from("project_technologies").upsert(
+            { project_id: projectId, technology_id: techRecord.id },
+            { onConflict: "project_id,technology_id" }
+          );
+        }
+      }
+    }
+
+    revalidatePath("/");
+    revalidatePath("/admin/projects");
+    return { success: true };
+  } catch (err: any) {
+    console.error("Error in updateProjectAction:", err);
+    return { success: false, error: err?.message || "Failed to update project" };
+  }
+}
+
+export async function seedDefaultProjects(): Promise<{ success: boolean; error?: string }> {
+  try {
+    const supabase = await createClient();
+    const sampleProjects = [
+      {
+        title: "MU Connect",
+        slug: "mu-connect",
+        short_description:
+          "A comprehensive university community platform designed to help students share resources, organize study groups, and interact.",
+        description:
+          "Engineered an all-in-one community portal for university students and faculty. Features role-based access, course resource hubs, event scheduling, and real-time interaction channels.",
+        category: "University Platform",
+        featured: true,
+        published: true,
+        sort_order: 1,
+        github_url: "https://github.com/kamel404/mu-connect",
+        live_url: null,
+        technologies: ["Laravel", "React", "PostgreSQL", "Tailwind CSS"],
+      },
+      {
+        title: "Cloud Commerce Suite",
+        slug: "cloud-commerce-suite",
+        short_description:
+          "Modern e-commerce platform with automated inventory tracking, secure checkout, and intuitive admin analytics.",
+        description:
+          "Robust full-stack commerce application with real-time stock alerts, dynamic shopping carts, stripe payment integration, and a comprehensive sales reporting dashboard.",
+        category: "E-commerce",
+        featured: true,
+        published: true,
+        sort_order: 2,
+        github_url: "https://github.com/kamel404/cloud-commerce",
+        live_url: null,
+        technologies: ["Next.js", "TypeScript", "PostgreSQL", "Supabase"],
+      },
+      {
+        title: "TaskFlow Mobile",
+        slug: "taskflow-mobile",
+        short_description:
+          "Cross-platform task and team management mobile app featuring offline-first storage and instant synchronization.",
+        description:
+          "Designed and developed a sleek productivity app with board views, priority tags, offline sync using SQLite, and push notification reminders.",
+        category: "Mobile Application",
+        featured: false,
+        published: true,
+        sort_order: 3,
+        github_url: "https://github.com/kamel404/taskflow-mobile",
+        live_url: null,
+        technologies: ["Flutter", "Dart", "Firebase", "REST APIs"],
+      },
+    ];
+
+    for (const proj of sampleProjects) {
+      const { technologies, ...projectData } = proj;
+      const { data: inserted, error } = await supabase
+        .from("projects")
+        .insert([{ ...projectData, updated_at: new Date().toISOString() }])
+        .select("id")
+        .single();
+
+      if (!error && inserted?.id && technologies) {
+        for (const tech of technologies) {
+          const { data: techRow } = await supabase
+            .from("technologies")
+            .upsert({ name: tech.trim() }, { onConflict: "name" })
+            .select("id")
+            .single();
+
+          if (techRow?.id) {
+            await supabase
+              .from("project_technologies")
+              .upsert(
+                { project_id: inserted.id, technology_id: techRow.id },
+                { onConflict: "project_id,technology_id" }
+              );
+          }
+        }
+      }
+    }
+
+    revalidatePath("/");
+    revalidatePath("/admin/projects");
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err?.message || "Failed to seed default projects" };
+  }
+}
+
 
 // ---------------------------------------------------------
 // Experience Actions

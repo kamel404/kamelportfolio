@@ -52,7 +52,10 @@ export const defaultProjects: Project[] = [
   },
 ];
 
-export async function getProjects(onlyPublished: boolean = true): Promise<Project[]> {
+export async function getProjects(
+  onlyPublished: boolean = true,
+  fallbackToDefault: boolean = true
+): Promise<Project[]> {
   try {
     const supabase = await createClient();
     let query = supabase
@@ -71,8 +74,21 @@ export async function getProjects(onlyPublished: boolean = true): Promise<Projec
 
     const { data, error } = await query;
 
-    if (error || !data || data.length === 0) {
-      return onlyPublished ? defaultProjects.filter((p) => p.published) : defaultProjects;
+    if (error) {
+      console.error("Error fetching projects from Supabase:", error.message);
+      return fallbackToDefault
+        ? onlyPublished
+          ? defaultProjects.filter((p) => p.published)
+          : defaultProjects
+        : [];
+    }
+
+    if (!data || data.length === 0) {
+      return fallbackToDefault
+        ? onlyPublished
+          ? defaultProjects.filter((p) => p.published)
+          : defaultProjects
+        : [];
     }
 
     return data.map((item: any) => ({
@@ -94,7 +110,14 @@ export async function getProjects(onlyPublished: boolean = true): Promise<Projec
             .filter(Boolean)
         : [],
     }));
-  } catch {
-    return onlyPublished ? defaultProjects.filter((p) => p.published) : defaultProjects;
+  } catch (err: any) {
+    if (err?.digest === "DYNAMIC_SERVER_USAGE") {
+      throw err;
+    }
+    return fallbackToDefault
+      ? onlyPublished
+        ? defaultProjects.filter((p) => p.published)
+        : defaultProjects
+      : [];
   }
 }

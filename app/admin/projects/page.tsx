@@ -2,14 +2,15 @@ import React from "react";
 import Link from "next/link";
 import { getProjects } from "@/lib/data/projects";
 import { getProfile } from "@/lib/data/profile";
-import { deleteProject } from "../actions";
-import { Plus, ExternalLink, Star } from "lucide-react";
-import { Tag } from "@/components/ui/Tag";
-import { DeleteButton } from "@/components/admin/DeleteButton";
+import { Plus } from "lucide-react";
 import { CvImportButton } from "@/components/admin/CvImportButton";
+import { ProjectList } from "@/components/admin/ProjectList";
+
+export const dynamic = "force-dynamic";
 
 export default async function AdminProjectsPage() {
-  const projects = await getProjects(false);
+  // CRITICAL: fallbackToDefault is FALSE so admin only views and manages real DB projects
+  const projects = await getProjects(false, false);
   const profile = await getProfile();
 
   return (
@@ -20,7 +21,7 @@ export default async function AdminProjectsPage() {
             Project Management
           </h1>
           <p className="text-sm text-[#6B6A63] mt-1">
-            Create, edit, and organize portfolio projects.
+            Create, edit, delete, and import portfolio projects from your CV.
           </p>
         </div>
 
@@ -41,81 +42,7 @@ export default async function AdminProjectsPage() {
         </div>
       </div>
 
-
-      <div className="bg-white border border-[#E4E1D8] rounded-xl overflow-hidden shadow-xs">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-[#F7F6F2] border-b border-[#E4E1D8] text-[#6B6A63] text-xs uppercase font-semibold">
-              <tr>
-                <th className="py-3.5 px-4">Title</th>
-                <th className="py-3.5 px-4">Category</th>
-                <th className="py-3.5 px-4">Status</th>
-                <th className="py-3.5 px-4">Featured</th>
-                <th className="py-3.5 px-4 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#E4E1D8]">
-              {projects.map((project) => (
-                <tr key={project.id} className="hover:bg-[#F7F6F2]/50 transition-colors">
-                  <td className="py-3.5 px-4 font-medium text-[#1F1F1C]">
-                    <div>{project.title}</div>
-                    <div className="text-xs text-[#6B6A63] font-mono">{project.slug}</div>
-                  </td>
-                  <td className="py-3.5 px-4">
-                    <Tag variant="default">{project.category}</Tag>
-                  </td>
-                  <td className="py-3.5 px-4">
-                    {project.published ? (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-50 text-green-700 border border-green-200">
-                        Published
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
-                        Draft
-                      </span>
-                    )}
-                  </td>
-                  <td className="py-3.5 px-4">
-                    {project.featured && (
-                      <Star className="w-4 h-4 text-[#D97757] fill-[#D97757]" />
-                    )}
-                  </td>
-                  <td className="py-3.5 px-4 text-right space-x-2">
-                    {project.live_url && (
-                      <a
-                        href={project.live_url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="p-1 text-[#6B6A63] hover:text-[#1F1F1C] inline-block"
-                        title="View Live"
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                      </a>
-                    )}
-                    <form
-                      action={async () => {
-                        "use server";
-                        await deleteProject(project.id);
-                      }}
-                      className="inline-block"
-                    >
-                      <DeleteButton title="Delete Project" />
-                    </form>
-                  </td>
-                </tr>
-              ))}
-
-              {projects.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="py-8 text-center text-[#6B6A63]">
-                    No projects found. Click "Add Project" to create your first one.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <ProjectList projects={projects} />
     </div>
   );
 }

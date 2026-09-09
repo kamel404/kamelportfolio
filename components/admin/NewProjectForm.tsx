@@ -6,7 +6,7 @@ import { saveProject } from "@/app/admin/actions";
 import { SubmitButton } from "@/components/admin/SubmitButton";
 import { CvImportModal } from "./CvImportModal";
 import { ParsedProject } from "@/lib/cv-parser";
-import { Sparkles, ArrowLeft } from "lucide-react";
+import { Sparkles, ArrowLeft, Tag } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 interface NewProjectFormProps {
@@ -29,6 +29,7 @@ export function NewProjectForm({ currentCvUrl }: NewProjectFormProps) {
   const [sortOrder, setSortOrder] = useState("1");
   const [featured, setFeatured] = useState(false);
   const [published, setPublished] = useState(true);
+  const [technologies, setTechnologies] = useState("");
 
   const handleFillForm = (proj: ParsedProject) => {
     setTitle(proj.title || "");
@@ -41,6 +42,9 @@ export function NewProjectForm({ currentCvUrl }: NewProjectFormProps) {
     setImageUrl(proj.image_url || "");
     setFeatured(Boolean(proj.featured));
     setPublished(proj.published !== false);
+    if (proj.technologies && proj.technologies.length > 0) {
+      setTechnologies(proj.technologies.join(", "));
+    }
   };
 
   const handleSuccess = () => {
@@ -132,6 +136,23 @@ export function NewProjectForm({ currentCvUrl }: NewProjectFormProps) {
                 placeholder="e.g. mu-connect"
                 className="w-full px-3.5 py-2.5 rounded-lg border border-[#E4E1D8] bg-white text-[#1F1F1C] text-sm focus:outline-none focus:ring-2 focus:ring-[#D97757]/40 font-mono text-xs"
               />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-[#1F1F1C] mb-1.5">
+                Technologies (comma-separated)
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  name="technologies"
+                  value={technologies}
+                  onChange={(e) => setTechnologies(e.target.value)}
+                  placeholder="e.g. Flutter, Laravel, PostgreSQL, Stripe"
+                  className="w-full pl-9 pr-3.5 py-2.5 rounded-lg border border-[#E4E1D8] bg-white text-[#1F1F1C] text-sm focus:outline-none focus:ring-2 focus:ring-[#D97757]/40"
+                />
+                <Tag className="w-4 h-4 text-[#6B6A63] absolute left-3 top-3" />
+              </div>
             </div>
 
             <div>
