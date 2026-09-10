@@ -45,6 +45,7 @@ body {
 /* Custom scrollbar matching palette */
 ::-webkit-scrollbar {
   width: 8px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
   background: #F7F6F2;
@@ -55,6 +56,15 @@ body {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #D97757;
+}
+
+/* Utility to hide scrollbar while preserving scroll behavior */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 /* Subtle micro-animations */

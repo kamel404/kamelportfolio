@@ -7,14 +7,17 @@ import { GithubIcon } from "@/components/ui/Icons";
 
 interface ProjectCardProps {
   project: Project;
+  className?: string;
 }
 
-export function ProjectCard({ project }: ProjectCardProps) {
+export function ProjectCard({ project, className = "" }: ProjectCardProps) {
   return (
-    <article className="group flex flex-col bg-[#FFFFFF] border border-[#E4E1D8] rounded-xl overflow-hidden shadow-xs hover:border-[#D97757]/40 hover:shadow-md transition-all duration-300">
+    <article
+      className={`group flex flex-col bg-[#FFFFFF] border border-[#E4E1D8] rounded-xl overflow-hidden shadow-xs hover:border-[#D97757]/40 hover:shadow-md transition-all duration-300 ${className}`}
+    >
       {/* Project Image (if available) */}
       {project.image_url ? (
-        <div className="relative w-full h-48 sm:h-56 bg-[#EDE8DE] overflow-hidden">
+        <div className="relative w-full h-44 sm:h-48 bg-[#EDE8DE] overflow-hidden">
           <Image
             src={project.image_url}
             alt={project.title}
@@ -23,8 +26,8 @@ export function ProjectCard({ project }: ProjectCardProps) {
           />
         </div>
       ) : (
-        <div className="w-full h-32 bg-[#EDE8DE]/40 border-b border-[#E4E1D8] p-5 flex flex-col justify-between">
-          <div className="flex items-center justify-between">
+        <div className="w-full h-44 sm:h-48 bg-gradient-to-br from-[#EDE8DE] via-[#F7F6F2] to-[#EDE8DE]/50 border-b border-[#E4E1D8] p-5 flex flex-col justify-between relative overflow-hidden">
+          <div className="flex items-center justify-between relative z-10">
             <Tag variant="accent">{project.category}</Tag>
             {project.featured && (
               <span className="flex items-center gap-1 text-xs font-medium text-[#D97757]">
@@ -33,8 +36,14 @@ export function ProjectCard({ project }: ProjectCardProps) {
               </span>
             )}
           </div>
-          <div className="text-xs text-[#6B6A63] font-mono">
-            {project.slug}
+          <div className="relative z-10 flex items-end justify-between">
+            <div className="text-xs text-[#6B6A63] font-mono tracking-wide">
+              {project.slug}
+            </div>
+          </div>
+          {/* Subtle decorative background watermark */}
+          <div className="absolute -right-4 -bottom-6 text-[#E4E1D8]/60 font-mono text-7xl font-bold select-none pointer-events-none tracking-tighter">
+            &lt;/&gt;
           </div>
         </div>
       )}
@@ -73,7 +82,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
         )}
 
         {/* Links */}
-        <div className="mt-6 pt-4 border-t border-[#E4E1D8]/60 flex items-center justify-between text-xs sm:text-sm">
+        <div className="mt-auto pt-4 border-t border-[#E4E1D8]/60 flex items-center justify-between text-xs sm:text-sm">
           <div className="flex items-center gap-4">
             {project.github_url && (
               <a
