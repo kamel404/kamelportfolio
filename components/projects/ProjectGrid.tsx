@@ -38,33 +38,80 @@ export function ProjectGrid({ projects }: ProjectGridProps) {
   }, [projects, selectedCategory]);
 
   const checkScroll = useCallback(() => {
-    if (!scrollRef.current) return;
-    const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
-    const maxScroll = scrollWidth - clientWidth;
+    const el = scrollRef.current;
+    if (!el) return;
 
-    setCanScrollLeft(scrollLeft > 15);
-    setCanScrollRight(scrollLeft < maxScroll - 15);
-    setHasOverflow(maxScroll > 15);
+    const { scrollLeft, scrollWidth, clientWidth } = el;
+    const maxScroll = Math.max(0, scrollWidth - clientWidth);
+
+    const hasMore = maxScroll > 8;
+    setHasOverflow(hasMore);
+
+    if (!hasMore) {
+      setCanScrollLeft(false);
+      setCanScrollRight(false);
+      return;
+    }
+
+    const cards = el.querySelectorAll("article");
+    const containerRect = el.getBoundingClientRect();
+
+    let atStart = scrollLeft <= 4;
+    let atEnd = scrollLeft >= maxScroll - 4;
+
+    if (cards.length > 0) {
+      const firstCard = cards[0];
+      const lastCard = cards[cards.length - 1];
+
+      if (firstCard) {
+        const firstRect = firstCard.getBoundingClientRect();
+        if (firstRect.left >= containerRect.left - 4) {
+          atStart = true;
+        }
+      }
+
+      if (lastCard) {
+        const lastRect = lastCard.getBoundingClientRect();
+        if (lastRect.right <= containerRect.right + 4) {
+          atEnd = true;
+        }
+      }
+    }
+
+    setCanScrollLeft(!atStart);
+    setCanScrollRight(!atEnd);
 
     // Determine currently centered/active card
-    const cardEl = scrollRef.current.querySelector("article");
-    const step = cardEl ? cardEl.clientWidth + 24 : 400;
+    const cardEl = cards[0];
+    const cardWidth = cardEl ? cardEl.getBoundingClientRect().width : 360;
+    const step = cardWidth + 20;
     const index = Math.round(scrollLeft / step);
     setActiveIndex(Math.max(0, Math.min(filteredProjects.length - 1, index)));
   }, [filteredProjects.length]);
 
   useEffect(() => {
-    const timer = setTimeout(checkScroll, 100);
     const el = scrollRef.current;
-    if (!el) return () => clearTimeout(timer);
+    if (!el) return;
+
+    checkScroll();
+    const timer = setTimeout(checkScroll, 100);
 
     el.addEventListener("scroll", checkScroll, { passive: true });
     window.addEventListener("resize", checkScroll);
+
+    let ro: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== "undefined") {
+      ro = new ResizeObserver(() => {
+        checkScroll();
+      });
+      ro.observe(el);
+    }
 
     return () => {
       clearTimeout(timer);
       el.removeEventListener("scroll", checkScroll);
       window.removeEventListener("resize", checkScroll);
+      if (ro) ro.disconnect();
     };
   }, [checkScroll, filteredProjects]);
 
@@ -76,25 +123,33 @@ export function ProjectGrid({ projects }: ProjectGridProps) {
   };
 
   const scroll = (direction: "left" | "right") => {
-    if (!scrollRef.current) return;
-    const container = scrollRef.current;
-    const cardEl = container.querySelector("article");
-    const step = cardEl ? cardEl.clientWidth + 24 : 400;
-    container.scrollBy({
+    const el = scrollRef.current;
+    if (!el) return;
+    const cardEl = el.querySelector("article");
+    const cardWidth = cardEl ? cardEl.getBoundingClientRect().width : 360;
+    const step = cardWidth + 20;
+
+    el.scrollBy({
       left: direction === "left" ? -step : step,
       behavior: "smooth",
     });
+
+    const delays = [60, 150, 300, 450, 600];
+    delays.forEach((delay) => setTimeout(checkScroll, delay));
   };
 
   const scrollToProject = (index: number) => {
-    if (!scrollRef.current) return;
-    const cards = scrollRef.current.querySelectorAll("article");
+    const el = scrollRef.current;
+    if (!el) return;
+    const cards = el.querySelectorAll("article");
     if (cards[index]) {
       cards[index].scrollIntoView({
         behavior: "smooth",
         inline: "start",
         block: "nearest",
       });
+      const delays = [60, 150, 300, 450, 600];
+      delays.forEach((delay) => setTimeout(checkScroll, delay));
     }
   };
 
@@ -116,6 +171,7 @@ export function ProjectGrid({ projects }: ProjectGridProps) {
     }
     if (isDragging.current) {
       scrollRef.current.scrollLeft = scrollLeftStart.current - distance;
+      checkScroll();
     }
   };
 
@@ -124,6 +180,7 @@ export function ProjectGrid({ projects }: ProjectGridProps) {
     setTimeout(() => {
       isDragging.current = false;
     }, 50);
+    checkScroll();
   };
 
   const handleClickCapture = (e: React.MouseEvent) => {
@@ -159,7 +216,7 @@ export function ProjectGrid({ projects }: ProjectGridProps) {
       )}
 
       {/* Carousel Container with Left & Right Side Arrows */}
-      <div className="relative group">
+      <div className="relative">
         {/* Left Arrow Button */}
         {hasOverflow && (
           <button
@@ -167,13 +224,13 @@ export function ProjectGrid({ projects }: ProjectGridProps) {
             onClick={() => scroll("left")}
             disabled={!canScrollLeft}
             aria-label="Previous project"
-            className={`absolute left-1 sm:-left-5 lg:-left-6 top-1/2 -translate-y-1/2 z-20 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/95 backdrop-blur-md border border-[#E4E1D8] shadow-[0_4px_16px_rgba(0,0,0,0.1)] flex items-center justify-center transition-all duration-200 cursor-pointer ${
+            className={`absolute left-1 sm:-left-5 lg:-left-6 top-1/2 -translate-y-1/2 z-20 w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-white border flex items-center justify-center transition-all duration-200 ${
               canScrollLeft
-                ? "text-[#1F1F1C] hover:text-[#D97757] hover:border-[#D97757]/60 hover:scale-110 active:scale-95 opacity-100"
-                : "opacity-0 pointer-events-none -translate-x-2"
+                ? "opacity-100 scale-100 cursor-pointer pointer-events-auto text-[#1F1F1C] border-[#E4E1D8] shadow-[0_4px_20px_rgba(0,0,0,0.12)] hover:text-[#D97757] hover:border-[#D97757]/50 hover:shadow-[0_4px_20px_rgba(217,119,87,0.25)] hover:scale-110 active:scale-95"
+                : "opacity-0 scale-90 pointer-events-none cursor-default shadow-none border-transparent invisible"
             }`}
           >
-            <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.2]" />
+            <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.5]" />
           </button>
         )}
 
@@ -184,13 +241,13 @@ export function ProjectGrid({ projects }: ProjectGridProps) {
             onClick={() => scroll("right")}
             disabled={!canScrollRight}
             aria-label="Next project"
-            className={`absolute right-1 sm:-right-5 lg:-right-6 top-1/2 -translate-y-1/2 z-20 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/95 backdrop-blur-md border border-[#E4E1D8] shadow-[0_4px_16px_rgba(0,0,0,0.1)] flex items-center justify-center transition-all duration-200 cursor-pointer ${
+            className={`absolute right-1 sm:-right-5 lg:-right-6 top-1/2 -translate-y-1/2 z-20 w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-white border flex items-center justify-center transition-all duration-200 ${
               canScrollRight
-                ? "text-[#1F1F1C] hover:text-[#D97757] hover:border-[#D97757]/60 hover:scale-110 active:scale-95 opacity-100"
-                : "opacity-0 pointer-events-none translate-x-2"
+                ? "opacity-100 scale-100 cursor-pointer pointer-events-auto text-[#1F1F1C] border-[#E4E1D8] shadow-[0_4px_20px_rgba(0,0,0,0.12)] hover:text-[#D97757] hover:border-[#D97757]/50 hover:shadow-[0_4px_20px_rgba(217,119,87,0.25)] hover:scale-110 active:scale-95"
+                : "opacity-0 scale-90 pointer-events-none cursor-default shadow-none border-transparent invisible"
             }`}
           >
-            <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.2]" />
+            <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.5]" />
           </button>
         )}
 
@@ -212,13 +269,13 @@ export function ProjectGrid({ projects }: ProjectGridProps) {
             onMouseUp={onMouseUp}
             onMouseLeave={onMouseUp}
             onClickCapture={handleClickCapture}
-            className="flex gap-6 overflow-x-auto pb-4 pt-1 px-4 sm:px-6 lg:px-8 items-stretch snap-x snap-mandatory no-scrollbar cursor-grab active:cursor-grabbing select-none"
+            className="flex gap-5 overflow-x-auto pb-5 pt-2 px-4 sm:px-6 lg:px-8 items-start snap-x snap-mandatory no-scrollbar cursor-grab active:cursor-grabbing select-none"
           >
             {filteredProjects.map((project) => (
               <ProjectCard
                 key={project.id}
                 project={project}
-                className="w-[85vw] max-w-[340px] sm:w-[380px] md:w-[410px] shrink-0 snap-start h-full"
+                className="w-[82vw] max-w-[340px] sm:w-[360px] md:w-[380px] shrink-0 snap-start h-[480px]"
               />
             ))}
           </div>
@@ -233,18 +290,18 @@ export function ProjectGrid({ projects }: ProjectGridProps) {
         </div>
       </div>
 
-      {/* Minimalist Dot Navigation Indicators */}
+      {/* Dot Navigation Indicators */}
       {hasOverflow && filteredProjects.length > 1 && (
-        <div className="flex items-center justify-center gap-2 mt-6">
+        <div className="flex items-center justify-center gap-2 mt-5">
           {filteredProjects.map((p, idx) => (
             <button
               key={p.id}
               onClick={() => scrollToProject(idx)}
               aria-label={`Go to project ${idx + 1}`}
-              className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${
+              className={`rounded-full transition-all duration-300 ease-out cursor-pointer ${
                 activeIndex === idx
-                  ? "w-7 bg-[#D97757]"
-                  : "w-2 bg-[#E4E1D8] hover:bg-[#8A6F5A]/40"
+                  ? "w-8 h-2.5 bg-[#D97757] shadow-[0_0_8px_rgba(217,119,87,0.5)]"
+                  : "w-2.5 h-2.5 bg-[#E4E1D8] hover:bg-[#D97757]/40 hover:scale-110"
               }`}
             />
           ))}
