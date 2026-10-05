@@ -56,13 +56,6 @@ export function Navbar({ name, cvUrl }: NavbarProps) {
               <FileText className="w-3.5 h-3.5 text-[#D97757]" />
               Download CV
             </Button>
-            <Link
-              href="/admin"
-              className="text-xs text-[#6B6A63] hover:text-[#1F1F1C] px-2 py-1 rounded transition-colors"
-              title="Admin Portal"
-            >
-              Admin
-            </Link>
           </div>
 
           {/* Mobile Menu */}
